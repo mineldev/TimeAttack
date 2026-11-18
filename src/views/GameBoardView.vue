@@ -22,7 +22,24 @@ function iniciarPartida(){
 }
 
 function rebreTecla(tecla){
-    console.log(tecla)
+    const tempsActual = performance.now();
+    const tempsReal = (tempsActual - tempsInici) / 1000;
+
+    const objectiu = tempsObjectiu[tecla];
+    const error = Math.abs(tempsReal - objectiu);
+
+    resultats.value.push({
+        tecla: tecla,
+        objectiu: objectiu,
+        tempsReal: tempsReal,
+        error: error
+    });
+
+    console.log(resultats.value);
+
+    if(resultats.value.length === tecles.length){
+        jugant.value = false;
+    }
 }
 
 </script>
