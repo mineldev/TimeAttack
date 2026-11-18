@@ -1,7 +1,18 @@
 <script setup>
+import { ref, computed } from 'vue'
+import { useGameStore } from '@/stores/game'
+
 import KeyPad from '@/components/KeyPad.vue'
 import ResultsTable from '@/components/ResultsTable.vue'
-import { ref, computed } from 'vue'
+import ScoreBoard from '@/components/ScoreBoard.vue'
+
+console.log('GAMEBOARD CARGADO')
+
+const store = useGameStore()
+console.log('Nombre guardado:', store.nomJugador)
+
+const nom = ref('')
+
 const tecles = ['A', 'S', 'D', 'F']
 
 let tempsInici = 0
@@ -20,6 +31,12 @@ const puntuacio = computed(() => {
         return total + resultat.error
     }, 0)
 })
+
+function entrar() {
+    if (nom.value.trim() === '') return
+
+    store.guardarNom(nom.value.trim())
+}
 
 function iniciarPartida(){
     resultats.value = [];
@@ -44,8 +61,18 @@ function rebreTecla(tecla){
 
     console.log(resultats.value);
 
-    if(resultats.value.length === tecles.length){
+    if (resultats.value.length === tecles.length) {
         jugant.value = false;
+
+        let errorTotal = 0;
+
+        for (let index = 0; index < resultats.value.length; index++) {
+            const element = resultats.value[index];
+
+            errorTotal = errorTotal + Math.abs(element.error);
+        }
+
+        store.guardarPartida(Number(errorTotal.toFixed(2)));
     }
 }
 
@@ -56,33 +83,50 @@ function rebreTecla(tecla){
 
         <h1>TIME ATTACK</h1>
         <p class="subtitle">Posa a prova la teva precisió</p>
+        
+        <div v-if="!store.nomJugador">
+            <h2>Benvingut a TIME ATTACK!</h2>
 
-        <div class="game-panel">
-
-            <KeyPad 
-                :tecles="tecles"
-                :bloquejat="!jugant"
-                :premudes="resultats.map(r => r.tecla)"
-                @premuda="rebreTecla"
+            <input
+                v-model="nom"
+                placeholder="Introdueix el teu nom"
             />
 
-            <button class="start-button" @click="iniciarPartida">
-                Iniciar partida
+            <button @click="entrar">
+                Entrar al joc
             </button>
-
-            <ResultsTable 
-                v-if="!jugant && resultats.length === tecles.length"
-                :resultats="resultats"
-            />
-
-            <div 
-                v-if="!jugant && resultats.length === tecles.length"
-                class="score"
-            >
-                <h2>Puntuació final: {{ puntuacio.toFixed(2) }}</h2>
-            </div>
-
         </div>
+
+    <div v-else class="game-panel">
+
+        <h2>Hola, {{ store.nomJugador }}!</h2>
+        
+        <ScoreBoard />
+        
+        <KeyPad 
+            :tecles="tecles"
+            :bloquejat="!jugant"
+            :premudes="resultats.map(r => r.tecla)"
+            @premuda="rebreTecla"
+        />
+
+        <button class="start-button" @click="iniciarPartida">
+            Iniciar partida
+        </button>
+
+        <ResultsTable 
+            v-if="!jugant && resultats.length === tecles.length"
+            :resultats="resultats"
+        />
+
+        <div 
+            v-if="!jugant && resultats.length === tecles.length"
+            class="score"
+        >
+            <h2>Puntuació final: {{ puntuacio.toFixed(2) }}</h2>
+        </div>
+    </div>
+
     </main>
 </template>
 
