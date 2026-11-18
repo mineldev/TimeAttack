@@ -32,6 +32,7 @@ function rebreTecla(tecla){
         <KeyPad 
             :tecles="tecles"
             :bloquejat="!jugant"
+            :premudes="resultats.map(r => r.tecla)"
             @premuda="rebreTecla"
         
         />

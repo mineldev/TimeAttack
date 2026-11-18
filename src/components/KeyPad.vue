@@ -1,7 +1,8 @@
 <script setup>
 defineProps({
   tecles: Array,
-  bloquejat: Boolean
+  bloquejat: Boolean,
+  premudes: Array
 })
 
 const emit = defineEmits(['premuda'])
@@ -12,7 +13,7 @@ const emit = defineEmits(['premuda'])
     <button
       v-for="tecla in tecles"
       :key="tecla"
-      :disabled="bloquejat"
+      :disabled="bloquejat || premudes.includes(tecla)"
       @click="emit('premuda', tecla)"
     >
       {{ tecla }}
