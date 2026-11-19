@@ -2,6 +2,10 @@
 import { ref, computed } from 'vue'
 import { useGameStore } from '@/stores/game'
 
+import { onMounted, onUnmounted } from 'vue'
+import { socket } from '@/services/socket'
+
+
 import KeyPad from '@/components/KeyPad.vue'
 import ResultsTable from '@/components/ResultsTable.vue'
 import ScoreBoard from '@/components/ScoreBoard.vue'
@@ -30,6 +34,29 @@ const puntuacio = computed(() => {
     return resultats.value.reduce((total, resultat) => {
         return total + resultat.error
     }, 0)
+})
+
+function connectat() {
+    console.log('Connectat al servidor!', socket.id)
+}
+
+function rebreClassificacio(dades) {
+    console.log('Classificació rebuda:', dades)
+    store.actualitzarClassificacio(dades)
+}
+
+onMounted(() => {
+    socket.on('connect', connectat)
+    socket.on('classificacio', rebreClassificacio)
+    
+    socket.connect()
+})
+
+onUnmounted(() => {
+    socket.off('connect', connectat)
+    socket.on('classificacio', rebreClassificacio)
+
+    socket.disconnect()
 })
 
 function entrar() {
@@ -62,17 +89,20 @@ function rebreTecla(tecla){
     console.log(resultats.value);
 
     if (resultats.value.length === tecles.length) {
-        jugant.value = false;
+        jugant.value = false
 
-        let errorTotal = 0;
+        const errorTotal = resultats.value.reduce((total, r) => {
+            return total + r.error
+        }, 0)
 
-        for (let index = 0; index < resultats.value.length; index++) {
-            const element = resultats.value[index];
+        const errorFinal = Number(errorTotal.toFixed(2))
 
-            errorTotal = errorTotal + Math.abs(element.error);
-        }
+        store.guardarPartida(errorFinal)
 
-        store.guardarPartida(Number(errorTotal.toFixed(2)));
+        socket.emit('resultat', {
+            nom: store.nomJugador,
+            errorTotal: errorFinal
+        })
     }
 }
 
@@ -84,18 +114,21 @@ function rebreTecla(tecla){
         <h1>TIME ATTACK</h1>
         <p class="subtitle">Posa a prova la teva precisió</p>
         
-        <div v-if="!store.nomJugador">
-            <h2>Benvingut a TIME ATTACK!</h2>
+    <div v-if="!store.nomJugador" class="welcome-panel">
+        <h2>Benvingut a TIME ATTACK!</h2>
 
-            <input
-                v-model="nom"
-                placeholder="Introdueix el teu nom"
-            />
+        <p>Introdueix el teu nom per començar a jugar</p>
 
-            <button @click="entrar">
-                Entrar al joc
-            </button>
-        </div>
+        <input
+            v-model="nom"
+            placeholder="El teu nom..."
+            @keyup.enter="entrar"
+        />
+
+        <button @click="entrar">
+            Entrar al joc
+        </button>
+    </div>
 
     <div v-else class="game-panel">
 
@@ -132,24 +165,24 @@ function rebreTecla(tecla){
 
 <style scoped>
 
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
-    background: #111827;
-}
-
 .game-container {
     min-height: 100vh;
+    width: 100%;
+    padding: 40px 20px;
     background: #111827;
     color: white;
+
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+
     font-family: Arial, sans-serif;
 }
 
@@ -157,6 +190,8 @@ h1 {
     font-size: 3rem;
     letter-spacing: 5px;
     margin-bottom: 5px;
+    color: #38bdf8;
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
 }
 
 .subtitle {
@@ -166,11 +201,18 @@ h1 {
 
 .game-panel {
     background: #1f2937;
-    padding: 40px;
-    border-radius: 15px;
-    width: 80%;
-    max-width: 700px;
+    padding: 35px;
+    border: 1px solid #374151;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 900px;
     text-align: center;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+}
+
+.game-panel h2 {
+    margin-bottom: 25px;
+    color: #e5e7eb;
 }
 
 .start-button {
@@ -182,15 +224,76 @@ h1 {
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
+    font-weight: bold;
+    transition: background 0.2s, transform 0.2s;
 }
 
 .start-button:hover {
     background: #1d4ed8;
+    transform: translateY(-2px);
 }
 
 .score {
     margin-top: 25px;
     color: #38bdf8;
 }
+
+
+.welcome-panel {
+    background: #1f2937;
+    padding: 45px 35px;
+    border: 1px solid #374151;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-panel h2 {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+}
+
+.welcome-panel p {
+    color: #9ca3af;
+    margin-bottom: 25px;
+}
+
+.welcome-panel input {
+    width: 100%;
+    padding: 13px;
+    background: #111827;
+    border: 1px solid #4b5563;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    outline: none;
+    margin-bottom: 15px;
+}
+
+.welcome-panel input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.welcome-panel button {
+    width: 100%;
+    padding: 13px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.welcome-panel button:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+}
+
 
 </style>
